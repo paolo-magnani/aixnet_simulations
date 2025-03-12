@@ -1,4 +1,4 @@
-### Case study: EPOS-LHC
+### Case study: SYBILL
 ### Define the functions to extract fractions of elements to reconstruct the expected mass spectrum
 ### The fractions are taken as gaussians a*N(mu, std) + c (offset is always 0)
 ### For CNO there are two gaussians
@@ -27,22 +27,41 @@ def dict_paster(arr_of_dicts):
     return new_dict
 
 
+def flatten_distr(energy, seed=1312):
+    ## README: energy in EeV
+
+    np.random.seed(seed)
+    hist, bin_edges = np.histogram(np.log10(energy))
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+    fraction = np.mean(hist[bin_centers>=1])/np.mean(hist[bin_centers<1])
+    labels = np.random.uniform(size=len(energy))
+
+    data_mask = (energy<10)*(labels <= fraction) + (energy>=10)
+
+    return data_mask
+
 ### CLASSES
 class mass_fractions:
+    ## README: based on the value given by Emily, this class works with log10 of energy!
+
+    # masses names
+    masses = {'p': 1, 'He': 4, 'CNO': 16, 'Fe': 56}
     
     # mean values
-    mu = {'p': 18.24, 'He': 18.85, 'CNO': [17.71, 19.45]}
+    mu = {'p': 18.19, 'He': 18.79, 'CNO': [17.83, 19.39]}
 
     # standard deviations
-    std = {'p': 0.45, 'He': 0.4, 'CNO': [0.35, 0.34]}
+    std = {'p': 0.38, 'He': 0.57, 'CNO': [0.22, 0.34]}
 
     # constant
-    amp = {'p': 0.74, 'He': 0.54, 'CNO': [0.4, 0.61]}
+    amp = {'p': 0.39, 'He': 0.93, 'CNO': [0.2, 0.37]}
 
+    # CNO offset
+    CNO_c = 0.1
 
     # fixed random seed
-    seed = 420
-    np.random.seed(seed)
+    seed = 42023
 
 
     def fraction_func(self, name, energy):
@@ -50,30 +69,58 @@ class mass_fractions:
             gauss1 = self.amp[name][0]*1./(np.sqrt(2.*np.pi)*self.std[name][0])*np.exp(-np.power((energy - self.mu[name][0])/self.std[name][0], 2.)/2.)
             gauss2 = self.amp[name][1]*1./(np.sqrt(2.*np.pi)*self.std[name][1])*np.exp(-np.power((energy - self.mu[name][1])/self.std[name][1], 2.)/2.)
 
-            return gauss1 + gauss2
+            return gauss1 + gauss2 + self.CNO_c
         
         else:
             return self.amp[name]*1./(np.sqrt(2.*np.pi)*self.std[name])*np.exp(-np.power((energy - self.mu[name])/self.std[name], 2.)/2.)
 
-
+    '''
     def extract_frac(self, name, energy):
         # using an accept-reject method, seed is fixed a priori
 
         if name == 'Fe':
             labels = np.random.uniform(size=len(energy))
-            cumulative_frac = self.fraction_func('p', energy) + self.fraction_func('He', energy) + self.fraction_func('CNO', energy)
+            cumulative_frac = (self.fraction_func('p', energy) + self.fraction_func('He', energy) + self.fraction_func('CNO', energy)) #*energy # data is distributed as E^-1
             fraction_mask = (labels<=cumulative_frac)
 
         else:     
             labels = np.random.uniform(size=len(energy))
-            fractions = self.fraction_func(name, energy)
+            fractions = self.fraction_func(name, energy) #*energy # data is distributed as E^-1
             fraction_mask = (labels<=fractions)
 
         return fraction_mask
-    
+    '''
+
+    def extract_all_fractions(self, energy, mass):
+
+        np.random.seed(self.seed)
+        final_mask = [False]*len(mass)
+
+        for name in self.masses.keys():
+
+            mass_mask = (mass==self.masses[name])
+            # print(name, np.where(mass_mask==False))
+
+            if name=='Fe':
+                cumulative_frac = (1 - (self.fraction_func('p', energy) + self.fraction_func('He', energy) + self.fraction_func('CNO', energy)))
+                labels = np.random.uniform(np.min(cumulative_frac), np.max(cumulative_frac), size=len(energy))
+                mass_mask = (labels<=cumulative_frac)*mass_mask
+
+            else:
+                fractions = self.fraction_func(name, energy)
+                labels = np.random.uniform(np.min(fractions), np.max(fractions), size=len(energy))
+                mass_mask =  (labels<=fractions)*mass_mask
+
+            final_mask = final_mask + mass_mask
+
+        #print(final_mask)
+        return final_mask
+
+
 
 # this class is used to have data that resemble the measured energy spectrum 
 class energy_spectrum:
+    ## README: energy in eV!
 
     # spectrum parameters
     J0 = 1.315e-18
@@ -101,16 +148,23 @@ class energy_spectrum:
 
         return func
     
+
+    # extract mass fractions
     def spectrum_fraction(self, energy):
 
-        mf = mass_fractions()
-
-        spectrum = self.spectrum_func(energy)
+        spectrum = self.spectrum_func(energy)*(energy) # the multiplication for energy is necessary because data is already having an energy^-1 trend
         # accept-reject method
         labels = np.random.uniform(np.min(spectrum), np.max(spectrum), size=len(energy))
         mask = (labels<=spectrum)
 
         return  mask
+
+    # I use Metropolis acceptance to extract data
+    # the idea is that the spectrum is not a super-sharp 
+    def metropolis_spectrum_fraction(self, energy):
+        
+        spectrum = self.spectrum_func(energy)*(energy) # the multiplication for energy is necessary because data is already having an energy^-1 trend
+        
 
 
 
