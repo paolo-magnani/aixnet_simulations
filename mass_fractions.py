@@ -5,6 +5,7 @@
 ### Iron is defined as the remainder of the other fractions, with offsets and constants
 ### Values are takem from Emily's thesis, chapter 5, page 50
 import numpy as np
+# import scipy.integrate as si
 
 
 ### UTILITIES
@@ -103,12 +104,13 @@ class mass_fractions:
 
             if name=='Fe':
                 cumulative_frac = (1 - (self.fraction_func('p', energy) + self.fraction_func('He', energy) + self.fraction_func('CNO', energy)))
-                labels = np.random.uniform(np.min(cumulative_frac), np.max(cumulative_frac), size=len(energy))
+                labels = np.random.uniform(0, 0.845, size=len(energy))
                 mass_mask = (labels<=cumulative_frac)*mass_mask
+                # print(np.max(cumulative_frac))
 
             else:
                 fractions = self.fraction_func(name, energy)
-                labels = np.random.uniform(np.min(fractions), np.max(fractions), size=len(energy))
+                labels = np.random.uniform(0, 0.845, size=len(energy))
                 mass_mask =  (labels<=fractions)*mass_mask
 
             final_mask = final_mask + mass_mask
@@ -136,7 +138,6 @@ class energy_spectrum:
 
 
     seed = 69
-    np.random.seed(seed)
 
     def spectrum_func(self, energy):
 
@@ -152,6 +153,8 @@ class energy_spectrum:
     # extract mass fractions
     def spectrum_fraction(self, energy):
 
+        #np.random.seed(self.seed)
+
         spectrum = self.spectrum_func(energy)*(energy) # the multiplication for energy is necessary because data is already having an energy^-1 trend
         # accept-reject method
         labels = np.random.uniform(np.min(spectrum), np.max(spectrum), size=len(energy))
@@ -159,12 +162,30 @@ class energy_spectrum:
 
         return  mask
 
+    '''
+    def spectrum_distr(self, energy):
+        # P(log(x))=P(x)*dx/d(log(x))=P(x)*x*ln(10)
+        return self.spectrum_func(energy)*energy*np.log(10) # dependence on log(energy instead of energy)
+
     # I use Metropolis acceptance to extract data
     # the idea is that the spectrum is not a super-sharp 
     def metropolis_spectrum_fraction(self, energy):
-        
-        spectrum = self.spectrum_func(energy)*(energy) # the multiplication for energy is necessary because data is already having an energy^-1 trend
-        
+        # using log(energy) so E^-1 distribution is constant
+        np.random.seed(self.seed)
 
+        # integral, err = si.quad(self.spectrum_distr, np.log10(3e18), np.log10(200e18))
+        # print('Intergral value:', integral,'pm', err)
+        prob_spectrum = self.spectrum_distr(energy)# /integral
+        prob_original = np.log(10)/np.log(200/3) # this is not the most efficient, but I need a clear visualization!
+        
+        prob_frac = prob_spectrum/prob_original
+        metropolis = np.min([np.ones_like(energy), prob_frac], axis=0)# choose the minimum between the two
+        # print(prob_frac)
+        labels = np.random.uniform(size=len(energy))
+
+        mask = (labels <= metropolis)
+
+        return mask
+    '''
 
 
