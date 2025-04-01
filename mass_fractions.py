@@ -5,7 +5,6 @@
 ### Iron is defined as the remainder of the other fractions, with offsets and constants
 ### Values are takem from Emily's thesis, chapter 5, page 50
 import numpy as np
-# import scipy.integrate as si
 
 
 ### UTILITIES
