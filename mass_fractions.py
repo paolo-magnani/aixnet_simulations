@@ -27,6 +27,12 @@ def dict_paster(arr_of_dicts):
     return new_dict
 
 
+def generate_xmax19(data_dict, xmax_key, ene_key):
+    # Energy in EeV!
+    data_dict["xmax19"] = data_dict[xmax_key] - 58.*np.log10(data_dict[ene_key]/1e1)
+    return  # dd
+
+
 def flatten_distr(energy, seed=1312):
     ## README: energy in EeV
 

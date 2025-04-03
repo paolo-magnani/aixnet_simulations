@@ -52,17 +52,21 @@ class SMD_method:
 
     def dipole_value(self, energy, name, d_max):
 
-        dipole = np.sum(self.sd.dipole_rigidity(name, energy, d_max))/len(energy)
-        err = np.sqrt(2/len(energy))
+        if len(energy)!=0:
+            dipole = np.sum(self.sd.dipole_rigidity(name, energy, d_max))/len(energy)
+            # print(len(energy))
+            err = np.sqrt(2/len(energy))
 
-        return dipole, err
-
+            return dipole, err
+        else: return 0, 0 # in case of empty bin
 
     def quantify_SMD(self, light_ene, light_name, heavy_ene, heavy_name, d_max):
 
         dip_l, sigma_l = self.dipole_value(light_ene, light_name, d_max)
         dip_h, sigma_h = self.dipole_value(heavy_ene, heavy_name, d_max)
 
-        SMD = np.abs(dip_l-dip_h)/np.sqrt(np.power(sigma_l, 2)+np.power(sigma_h, 2))
-
-        return SMD
+        if dip_l==0 or dip_h==0:
+            return -1
+        else:
+            SMD = np.abs(dip_l-dip_h)/np.sqrt(np.power(sigma_l, 2)+np.power(sigma_h, 2))
+            return SMD
