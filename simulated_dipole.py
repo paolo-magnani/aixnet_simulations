@@ -4,6 +4,7 @@ import numpy as np
 import scipy.stats as ss
 
 names = {'p': 1, 'He': 4, 'CNO': 16, 'Fe': 56}
+charges = {'p': 1, 'He': 2, 'CNO': 8, 'Fe': 26}
 colors = {'p': 'red', 'He': 'orange', 'CNO': 'green', 'Fe': 'blue'}
 
 energies = np.array([4e18, 8e18, 16e18, 32e18, 200e18])
@@ -22,7 +23,6 @@ class simulated_dipole:
     beta_r = 1.3
     d_max = [1, 3]
 
-    charges = {'p': 1, 'He': 2, 'CNO': 8, 'Fe': 26}
 
 
     def overall_dipole_dependence(self, E):
@@ -32,7 +32,7 @@ class simulated_dipole:
 
     def dipole_dependence(self, name, E, d_max):
         # energy in EeV
-        dip = self.d_r*np.power(E/(self.charges[name]), self.beta_r)
+        dip = self.d_r*np.power(E/(charges[name]), self.beta_r)
         cutoff = np.zeros_like(E) + d_max
 
         return np.min([dip, cutoff], axis=0)
