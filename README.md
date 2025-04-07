@@ -1,2 +1,7 @@
 # aixnet_simulations
-Code for optimizing mass cuts on AixNet data
+Code to evaluate mass cuts on AixNet data for mass informed dipole analysis.
+
+Here there is the description of the files:
+- 
+- 
+-  
