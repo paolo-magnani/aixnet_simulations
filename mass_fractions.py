@@ -22,7 +22,7 @@ def dict_paster(arr_of_dicts):
 
     for i in range(1, len(arr_of_dicts)):
         for key, value in arr_of_dicts[i].items():
-            new_dict[key] = np.concatenate(new_dict[key], value)
+            new_dict[key] = np.concatenate([new_dict[key], value])
 
     return new_dict
 
