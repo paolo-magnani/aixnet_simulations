@@ -1,3 +1,5 @@
+##### OLD CODE, I DON'T USE THIS ANYMORE
+
 ### Case study: SYBILL
 ### Define the functions to extract fractions of elements to reconstruct the expected mass spectrum
 ### The fractions are taken as gaussians a*N(mu, std) + c (offset is always 0)
@@ -80,22 +82,6 @@ class mass_fractions:
         else:
             return self.amp[name]*1./(np.sqrt(2.*np.pi)*self.std[name])*np.exp(-np.power((energy - self.mu[name])/self.std[name], 2.)/2.)
 
-    '''
-    def extract_frac(self, name, energy):
-        # using an accept-reject method, seed is fixed a priori
-
-        if name == 'Fe':
-            labels = np.random.uniform(size=len(energy))
-            cumulative_frac = (self.fraction_func('p', energy) + self.fraction_func('He', energy) + self.fraction_func('CNO', energy)) #*energy # data is distributed as E^-1
-            fraction_mask = (labels<=cumulative_frac)
-
-        else:     
-            labels = np.random.uniform(size=len(energy))
-            fractions = self.fraction_func(name, energy) #*energy # data is distributed as E^-1
-            fraction_mask = (labels<=fractions)
-
-        return fraction_mask
-    '''
 
     def extract_all_fractions(self, energy, mass):
 
