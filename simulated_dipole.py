@@ -42,7 +42,7 @@ def dict_paster(arr_of_dicts):
 
 def generate_xmax19(data_dict, xmax_key, ene_key):
     # Energy in EeV!
-    data_dict["xmax19"] = data_dict[xmax_key] - 58.*np.log10(data_dict[ene_key]/1e1)
+    data_dict["xmax19"] = data_dict[xmax_key] - 58.*np.log10(data_dict[ene_key]/10.)
     return  # dd
 
 
@@ -107,16 +107,14 @@ class simulated_dipole:
 # this class calculates 
 class SMD_method:
 
-
-    model = 'Sybill'
+    sd = simulated_dipole()
 
     ## constructor: model is either Sybill or EPOS, default is Sybill
     def __init__(self, model='Sybill'):
         if model=='EPOS':
-            self.model ='EPOS'
+            self.sd = simulated_dipole(model='EPOS')
 
-
-    sd = simulated_dipole(model)
+    
 
     def dipole_value(self, energy, name, d_max):
 
