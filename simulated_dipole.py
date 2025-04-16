@@ -2,6 +2,8 @@
 ## The original analysis was done with Sybill, numbers from Emily's thesis 
 ## EPOS-LHC is now also supported
 import numpy as np
+import pandas as pd
+import pickle
 
 
 ## ----- All global definitions go here -----
@@ -20,6 +22,52 @@ dipole_errors = ([0.005, 0.009, 0.019, 0.04], [0.008, 0.012, 0.026, 0.05])
 
 
 ## ----- UTILITIES ------
+
+def file_loader(estimator):
+
+    dd = {}
+
+    if estimator=='AixNet':
+        input_path = '/mnt/c/Users/paolo/Desktop/LAVORO/data_files/aixnet_sib_all_data.npz'
+        data = np.load(input_path, allow_pickle=True)
+        print(data.files)
+        print(len(data['dnn_xmax']))
+        dd = {key: data[key] for key in data.files}
+
+    elif estimator=='KAne':
+        input_kane = '../berenika_dipole/dateset/KAne_EPOS_sims.csv'
+        kf = pd.read_csv(input_kane)
+        dd = {}
+        dd['dnn_xmax'] = np.array(kf['Xmax'])
+        dd['zenith'] = np.array(np.pi/2 - kf['Zenith'])
+        dd['energy'] = np.array(kf['Energy']/1e18)
+        dd['primary'] = np.array(kf['Primary'])
+        dd['mass'] = np.empty_like(dd['energy'])
+        dd['mass'][np.where(dd['primary']==0)] = 1
+        dd['mass'][np.where(dd['primary']==1)] = 4
+        dd['mass'][np.where(dd['primary']==2)] = 16
+        dd['mass'][np.where(dd['primary']==3)] = 56
+
+    elif estimator=='Universality':
+        input_univ = '/mnt/c/Users/paolo/Desktop/LAVORO/data_files/pickle/pickle/'
+        filenames = ['proton_phase1.pickle', 'helium_phase1.pickle', 'oxygen_phase1.pickle', 'iron_phase1.pickle']
+        filemasses = [1, 4, 16, 56]
+        temp_dict = [{} for i in range(4)]
+
+        for i in range(4):
+
+            with open(input_univ +filenames[i], 'rb') as f:
+                temp_dict[i] = pickle.load(f)
+            
+            temp_dict[i]['mass'] = np.zeros_like(temp_dict[i]['univ_xmax']) + filemasses[i]
+            temp_dict[i]['energy'] = temp_dict[i]['sd_e']/1e18
+
+        dd = dict_paster(temp_dict)
+    else:
+        print('ERROR: mass estimator not given')
+        return
+
+    return dd 
 
 def dict_cutter(dict, mask):
     new_dict = {}
