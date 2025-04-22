@@ -13,7 +13,7 @@ charges = {'p': 1, 'He': 2, 'CNO': 8, 'Fe': 26}
 colors = {'p': 'red', 'He': 'orange', 'CNO': 'green', 'Fe': 'blue'}
 
 ## dipole energies (in eV)
-energies = np.array([4e18, 8e18, 16e18, 32e18, 200e18])
+energies = np.array([8e18, 16e18, 32e18, 200e18])
 mid_ene = energies[:-1] # for energy binning
 
 ## values for plotting the measured value of the dipole from ICRC2023  
@@ -23,7 +23,7 @@ dipole_errors = ([0.005, 0.009, 0.019, 0.04], [0.008, 0.012, 0.026, 0.05])
 
 ## ----- UTILITIES ------
 
-def file_loader(estimator):
+def file_loader(estimator): # load files choosing the right estimator; further changes are needed to use one specific data set (e.g., using EPOS-LHC)
 
     dd = {}
 
@@ -35,12 +35,26 @@ def file_loader(estimator):
         dd = {key: data[key] for key in data.files}
 
     elif estimator=='KAne':
-        input_kane = '../berenika_dipole/dateset/KAne_EPOS_sims.csv'
+        input_kane = '../berenika_dipole/dataset/KAne_EPOS_sims.csv'
         kf = pd.read_csv(input_kane)
         dd = {}
         dd['dnn_xmax'] = np.array(kf['Xmax'])
-        dd['zenith'] = np.array(np.pi/2 - kf['Zenith'])
-        dd['energy'] = np.array(kf['Energy']/1e18)
+        dd['zenith'] = np.array(np.pi/2 - kf['Zenith']) # I use the same angle definition 
+        dd['energy'] = np.array(kf['Energy_MC']/1e18)
+        dd['primary'] = np.array(kf['Primary'])
+        dd['mass'] = np.empty_like(dd['energy'])
+        dd['mass'][np.where(dd['primary']==0)] = 1
+        dd['mass'][np.where(dd['primary']==1)] = 4
+        dd['mass'][np.where(dd['primary']==2)] = 16
+        dd['mass'][np.where(dd['primary']==3)] = 56
+
+    elif estimator=='AixNet_EPOS':
+        input_aix = '../berenika_dipole/dataset/AixNet_EPOSoldP_sims.csv'
+        kf = pd.read_csv(input_aix)
+        dd = {}
+        dd['dnn_xmax'] = np.array(kf['Xmax'])
+        # dd['zenith'] = np.array(np.pi/2 - kf['Zenith'])
+        dd['energy'] = np.array(kf['mc_energy'])
         dd['primary'] = np.array(kf['Primary'])
         dd['mass'] = np.empty_like(dd['energy'])
         dd['mass'][np.where(dd['primary']==0)] = 1
@@ -61,13 +75,33 @@ def file_loader(estimator):
             
             temp_dict[i]['mass'] = np.zeros_like(temp_dict[i]['univ_xmax']) + filemasses[i]
             temp_dict[i]['energy'] = temp_dict[i]['sd_e']/1e18
+            temp_dict[i]['univ_rmu'] = temp_dict[i]['univ_rmu']
 
         dd = dict_paster(temp_dict)
+
     else:
         print('ERROR: mass estimator not given')
         return
 
     return dd 
+
+
+def remove_nan_entries(d): # ChatGPT wrote this for me
+    # Create a mask of valid (non-NaN) entries based on one key (e.g., the first one)
+    keys = list(d.keys())
+    if not keys:
+        return d  # empty dict
+    
+    # Start with all entries being valid
+    mask = ~np.isnan(d[keys[0]])
+
+    # Combine masks if any other key has NaNs
+    for key in keys[1:]:
+        mask &= ~np.isnan(d[key])
+
+    # Apply mask to all entries
+    return {key: np.array(d[key])[mask] for key in d}
+
 
 def dict_cutter(dict, mask):
     new_dict = {}
@@ -89,9 +123,28 @@ def dict_paster(arr_of_dicts):
 
 
 def generate_xmax19(data_dict, xmax_key, ene_key):
-    # Energy in EeV!
+    ## Energy in EeV!
     data_dict["xmax19"] = data_dict[xmax_key] - 58.*np.log10(data_dict[ene_key]/10.)
-    return  # dd
+    return 
+
+def generate_lnA(data_dict, xmax_key, rmu_key, ene_key):
+    ## Energy in EeV!
+    ## Is this correct? No fucking idea
+    lam = 16.45 + 0.38*np.log10(data_dict[ene_key]/10)
+    bet = 0.013 + 0.006*np.log10(data_dict[ene_key]/10)
+
+    xmax_p = 797.16 + 47.1*np.log10(data_dict[ene_key]/10)
+    ln_rmu = 0.26 - 0.0176*np.log10(data_dict[ene_key]/10)
+
+    sigma_xm = 68.2 + (data_dict[xmax_key]-xmax_p)*23.1/(lam*np.log(56))
+    sigma_rmu = 0.214 + (data_dict[rmu_key]-ln_rmu)*(-0.057)/(bet*np.log(56))
+
+    phi_0 = (bet*sigma_xm/sigma_rmu)**2/lam
+
+    lnA = (phi_0*(data_dict[rmu_key]-ln_rmu)-bet*(data_dict[xmax_key]-xmax_p))/(bet*(lam+phi_0))
+
+    data_dict['lnA'] = lnA
+    return
 
 
 def flatten_distr(energy, seed=1312):
@@ -190,7 +243,7 @@ class SMD_method:
 
 
 class mass_fractions:
-    ## README: based on the value given by Emily, this class works with log10 of energy!
+    ## README: based on the values given by Emily, this class works with log10 of energy!
 
     ## masses names
     masses = {'p': 1, 'He': 4, 'CNO': 16, 'Fe': 56}
@@ -262,7 +315,7 @@ class mass_fractions:
 class energy_spectrum:
     ## README: energy in eV!
 
-    # spectrum parameters
+    ## spectrum parameters
     J0 = 1.315e-18
     g1 = 3.29
     g2 = 2.51
@@ -288,10 +341,27 @@ class energy_spectrum:
         return func
     
 
-    ## extract mass fractions
+    def spectrum_func_simpl(self, energy): # this is the simplified version, to have less heavy calculation
+        # energy in EeV
+
+        J0 = 1 # this is just a constant in the end
+        E12 = 5 # ankle
+        E23 = 13
+        E34 = 46 # suppression
+
+        prod1 = np.power((1+np.power(energy/E12, 1/self.omega )), (self.g1-self.g2)*self.omega )
+        prod2 = np.power((1+np.power(energy/E23, 1/self.omega )), (self.g2-self.g3)*self.omega )
+        prod3 = np.power((1+np.power(energy/E34, 1/self.omega )), (self.g3-self.g4)*self.omega )
+
+        func = J0*np.power(energy/np.sqrt(10), -self.g1)*prod1*prod2*prod3
+
+        return func
+    
+
+    ## extract mass fractions (using now simplified spectrum)
     def spectrum_fraction(self, energy):
 
-        spectrum = self.spectrum_func(energy)*(energy) # the multiplication for energy is necessary because data is already distributed as energy^-1
+        spectrum = self.spectrum_func_simpl(energy)*(energy) # the multiplication for energy is necessary because data is already distributed as energy^-1
         ## accept-reject method
         labels = np.random.uniform(np.min(spectrum), np.max(spectrum), size=len(energy))
         mask = (labels<=spectrum)
