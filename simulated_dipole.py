@@ -127,9 +127,19 @@ def generate_xmax19(data_dict, xmax_key, ene_key):
     data_dict["xmax19"] = data_dict[xmax_key] - 58.*np.log10(data_dict[ene_key]/10.)
     return 
 
-def generate_lnA(data_dict, xmax_key, rmu_key, ene_key):
+def generate_lnA(data_dict, xmax_key, rmu_key, ene_key, values='Emily'):
     ## Energy in EeV!
-    ## Is this correct? No fucking idea
+
+    if values=='Emily':
+        ## to be further completed
+        lam0 = 16.45
+        bet0 = 0.013
+        xmax0 = 797.16
+        ln_rmu0 = 0.26
+        sigma_xm0 = 68.2
+        sigma_rmu0 = 0.214
+
+
     lam = 16.45 + 0.38*np.log10(data_dict[ene_key]/10)
     bet = 0.013 + 0.006*np.log10(data_dict[ene_key]/10)
 
