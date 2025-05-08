@@ -49,7 +49,7 @@ def file_loader(estimator): # load files choosing the right estimator; further c
         dd['mass'][np.where(dd['primary']==3)] = 56
 
     elif estimator=='AixNet_EPOS':
-        input_aix = '../berenika_dipole/dataset/AixNet_EPOSoldP_sims.csv'
+        input_aix = '../../berenika_dipole/dataset/AixNet_EPOSoldP_sims.csv'
         kf = pd.read_csv(input_aix)
         dd = {}
         dd['dnn_xmax'] = np.array(kf['Xmax'])

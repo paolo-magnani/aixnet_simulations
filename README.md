@@ -1,5 +1,5 @@
 # aixnet_simulations
-Code to evaluate mass cuts on AixNet (and KAne) data for mass informed dipole analysis.
+Code to evaluate mass cuts on AixNet (and Universality) data for mass informed dipole analysis.
 
 ## Here there is the description of the files:
 -  contains the class describing the extraction of mass fractions, plus some utility functions;
