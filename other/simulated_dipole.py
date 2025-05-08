@@ -17,8 +17,8 @@ energies = np.array([8e18, 16e18, 32e18, 200e18])
 mid_ene = energies[:-1] # for energy binning
 
 ## values for plotting the measured value of the dipole from ICRC2023  
-dipole_values = (0.017, 0.065, 0.094, 0.17)
-dipole_errors = ([0.005, 0.009, 0.019, 0.04], [0.008, 0.012, 0.026, 0.05])
+dipole_values = (0.065, 0.094, 0.17)
+dipole_errors = ([0.009, 0.019, 0.04],[0.012, 0.026, 0.05])
 
 
 ## ----- UTILITIES ------
