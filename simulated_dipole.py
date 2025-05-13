@@ -13,7 +13,7 @@ charges = {'p': 1, 'He': 2, 'CNO': 8, 'Fe': 26}
 colors = {'p': 'red', 'He': 'orange', 'CNO': 'green', 'Fe': 'blue'}
 
 ## dipole energies (in eV)
-energies = np.array([8e18, 16e18, 32e18, 200e18])
+energies = np.array([4e18, 8e18, 16e18, 32e18, 200e18])
 mid_ene = energies[:-1] # for energy binning
 
 ## values for plotting the measured value of the dipole from ICRC2023  
@@ -67,7 +67,7 @@ def file_loader(estimator): # load files choosing the right estimator; further c
         kf = pd.read_csv(input_aix)
         dd = {}
         dd['dnn_xmax'] = np.array(kf['aix_xmax_raw'])
-        # dd['zenith'] = np.array(np.pi/2 - kf['Zenith'])
+        dd['zenith'] = np.array(kf['sd_zenith']) # np.array(np.pi/2 - kf['Zenith'])
         dd['energy'] = np.array(kf['mc_energy'])
         dd['primary'] = np.array(kf['Primary'])
         dd['mass'] = np.empty_like(dd['energy'])
@@ -75,6 +75,8 @@ def file_loader(estimator): # load files choosing the right estimator; further c
         dd['mass'][np.where(dd['primary']==1)] = 4
         dd['mass'][np.where(dd['primary']==2)] = 16
         dd['mass'][np.where(dd['primary']==3)] = 56
+        print(dd.keys())
+        print(len(dd['energy']))
 
     elif estimator=='Universality':
         input_univ = '/mnt/c/Users/paolo/Desktop/LAVORO/data_files/pickle/pickle/'
@@ -117,6 +119,7 @@ def remove_nan_entries(d): # ChatGPT wrote this for me
     return {key: np.array(d[key])[mask] for key in d}
 
 
+## this function cuts dictionaries according to a specific mask
 def dict_cutter(dict, mask):
     new_dict = {}
 
@@ -125,7 +128,7 @@ def dict_cutter(dict, mask):
 
     return new_dict
 
-
+## this function pastes dictionaries together (I tuse this to get the overall data set when I extract bin per bin)
 def dict_paster(arr_of_dicts):
     new_dict = arr_of_dicts[0].copy()
 
@@ -229,7 +232,7 @@ class simulated_dipole:
 
 
 
-# this class calculates the stabdardized mean difference
+## this class calculates the standardized mean difference
 class SMD_method:
 
     sd = simulated_dipole()
@@ -300,6 +303,7 @@ class mass_fractions:
 
 
     def fraction_func(self, name, energy):
+
         if name == 'CNO':
             gauss1 = self.amp[name][0]*1./(np.sqrt(2.*np.pi)*self.std[name][0])*np.exp(-np.power((energy - self.mu[name][0])/self.std[name][0], 2.)/2.)
             gauss2 = self.amp[name][1]*1./(np.sqrt(2.*np.pi)*self.std[name][1])*np.exp(-np.power((energy - self.mu[name][1])/self.std[name][1], 2.)/2.)
@@ -391,3 +395,78 @@ class energy_spectrum:
         mask = (labels<=spectrum)
 
         return  mask
+
+    
+class dipole_parameters:
+    # this class is given by f(Z,E)*J(E)*d(Z,E), and together they should minimize distance with the dipole values
+
+    def __init__(self, model='EPOS', dmax=3, e_steps=1000):
+        # this is used to evaluate the fraction f(Z,E)
+        self.mf = mass_fractions(model)
+        self.dmax = dmax
+        self.steps = e_steps
+        print('Model chosen:', model)
+        print('dipole cutoff:', self.dmax)
+        print('Number of energy steps in each bin:', self.steps)
+
+    # this is used to evaluate spectrum
+    es = energy_spectrum()
+
+    vec_d_r = np.arange(0.0001, 0.0201, step=0.0001)
+    vec_b_r = np.arange(0.1, 3.1, step=0.1)
+
+    def dipole_func(self, name, E, d_r, beta_r, d_max):
+        # energy in EeV
+        dip = d_r*np.power((E/(charges[name])), beta_r)
+        cutoff = np.zeros_like(E) + d_max
+
+        return np.min([dip, cutoff], axis=0)
+
+    def evaluate(self):
+        print('Best parameter evaluation ...')
+        enebins = energies/1e18
+        results = {'d_r': [], 'beta_r': [], 'chisq':[], '4':[], '8': [], '16': [], '32': []}
+        counter = 0
+
+        # maybe this cycle can be optimized, Idk
+        for d_r in self.vec_d_r:
+            counter += 1
+            print('progress:', counter/2, '%', flush=True)
+
+            for beta_r in self.vec_b_r:
+                results['d_r'].append(d_r)
+                results['beta_r'].append(beta_r)
+
+                chisq = 0
+                for i in range(len(enebins[:-1])):
+                    E = np.linspace(enebins[i], enebins[i+1], self.steps)
+                    Z_sum = np.zeros_like(E)
+
+                    for name in charges:
+                        if name == 'Fe':
+                            Z_sum += self.dipole_func(name, E, d_r, beta_r, self.dmax)*(1 - (self.mf.fraction_func('p', np.log10(E)+18) + self.mf.fraction_func('He', np.log10(E)+18) + self.mf.fraction_func('CNO', np.log10(E)+18)))
+                        else:
+                            Z_sum += self.dipole_func(name, E, d_r, beta_r, self.dmax)*self.mf.fraction_func(name, np.log10(E)+18)
+                    
+                    dip = np.sum(Z_sum*self.es.spectrum_func_simpl(E))/np.sum(self.es.spectrum_func_simpl(E))
+
+                    val = (dip - dipole_values[i])
+                    if i>0: # Do not account the first bin!
+                        if val>0:
+                            chisq += (val/dipole_errors[1][i])**2
+                        else:
+                            chisq += (val/dipole_errors[0][i])**2
+
+                    results[f'{enebins[i]:.0f}'].append(dip)
+
+                
+                
+                results['chisq'].append(chisq)
+
+        for key, value in results.items():
+            results[key] = np.array(value)
+
+        print('Best d_r:', results['d_r'][results['chisq']==np.min(results['chisq'])])
+        print('Best beta_r:', results['beta_r'][results['chisq']==np.min(results['chisq'])])
+
+        return results

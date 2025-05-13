@@ -1,3 +1,5 @@
+#### THIS IS A COPY OF THE PRINCIPAL LIBRARY
+
 ## This library contains all the necessary functions to define the dipole distribution along energy, for all the mass compositions
 ## The original analysis was done with Sybill, numbers from Emily's thesis 
 ## EPOS-LHC is now also supported
@@ -267,7 +269,7 @@ class SMD_method:
 
 
 class mass_fractions:
-    ## README: based on the values given by Emily, this class works with log10 of energy!
+    ## README: based on the values given by Emily, this class works with log10 of energy (in eV)
 
     ## masses names
     masses = {'p': 1, 'He': 4, 'CNO': 16, 'Fe': 56}
@@ -366,7 +368,7 @@ class energy_spectrum:
     
 
     def spectrum_func_simpl(self, energy): # this is the simplified version, to have less heavy calculation
-        # energy in EeV
+        ## energy in EeV
 
         J0 = 1 # this is just a constant in the end
         E12 = 5 # ankle
