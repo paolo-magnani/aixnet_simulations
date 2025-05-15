@@ -34,6 +34,13 @@ def file_loader(estimator): # load files choosing the right estimator; further c
         print(len(data['dnn_xmax']))
         dd = {key: data[key] for key in data.files}
 
+    if estimator=='AixNet_EPOS_test':
+        input_path = '/mnt/c/Users/paolo/Desktop/LAVORO/data_files/aixnet_epos_lhc_test_data.npz'
+        data = np.load(input_path, allow_pickle=True)
+        print(data.files)
+        print(len(data['dnn_xmax']))
+        dd = {key: data[key] for key in data.files}
+
     elif estimator=='KAne':
         input_kane = '../berenika_dipole/dataset/KAne_EPOS_sims.csv'
         kf = pd.read_csv(input_kane)
@@ -407,7 +414,7 @@ class dipole_parameters:
         self.steps = e_steps
         print('Model chosen:', model)
         print('dipole cutoff:', self.dmax)
-        print('Number of energy steps in each bin:', self.steps)
+        print('Number of energy steps in integration:', self.steps)
 
     # this is used to evaluate spectrum
     es = energy_spectrum()
@@ -431,7 +438,7 @@ class dipole_parameters:
         # maybe this cycle can be optimized, Idk
         for d_r in self.vec_d_r:
             counter += 1
-            print('progress:', counter/2, '%', flush=True)
+            print('\r progress:', counter/2, '%', end='')
 
             for beta_r in self.vec_b_r:
                 results['d_r'].append(d_r)
@@ -466,7 +473,9 @@ class dipole_parameters:
         for key, value in results.items():
             results[key] = np.array(value)
 
-        print('Best d_r:', results['d_r'][results['chisq']==np.min(results['chisq'])])
-        print('Best beta_r:', results['beta_r'][results['chisq']==np.min(results['chisq'])])
+        best_d_r = results['d_r'][results['chisq']==np.min(results['chisq'])]
+        best_beta_r = results['beta_r'][results['chisq']==np.min(results['chisq'])]
+        print('\n Best d_r:', best_d_r)
+        print('Best beta_r:', best_beta_r)
 
-        return results
+        return results, best_d_r, best_beta_r
