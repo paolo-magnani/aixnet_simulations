@@ -213,6 +213,21 @@ def flatten_distr(energy, seed=1312):
 
     return data_mask
 
+# This function is used to get a data set with the same statistics as the one of Emily
+def get_emilys_numbers(dd, energies, n_to_elim):
+    keep_mask = np.ones(len(dd['energy']), dtype=bool) # I start keeping all
+    for i in range(len(energies[:-2])):
+        enne = energies[i+1]/1e18
+        enneplus = energies[i+2]/1e18
+        energy_mask = (dd['energy']>=enne)&(dd['energy']<enneplus)
+        bin_idxs = np.where(energy_mask)[0]
+        reject_idxs = np.random.choice(bin_idxs, size=n_to_elim[i], replace=False)
+        keep_mask[reject_idxs]=False
+    
+    return keep_mask # returns of a mask of events that need to be eliminated to get the same numbers
+
+
+
 
 ## ----- Classes -----
 
